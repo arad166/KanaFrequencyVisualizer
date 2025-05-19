@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>50音表ハイライト</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    table.kana-table {
+      margin-top: 20px;
+      border-collapse: collapse;
+    }
+
+    .kana-table th,
+    .kana-table td {
+      width: 40px;
+      height: 40px;
+      text-align: center;
+      border: 1px solid #ccc;
+      font-size: 20px;
+    }
+
+    .kana-table th {
+      display: none; /* 行/列見出しを非表示 */
+    }
+
+    .used-once {
+      background-color: blue;
+      color: white;
+    }
+
+    .used-multiple {
+      background-color: red;
+      color: white;
+    }
+
+    #inputText {
+      font-size: 20px;
+      padding: 5px;
+      width: 600px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>50音表ハイライト</h1>
+  <p>1回使った文字は青に、2回以上使った文字は赤になります</p>
+  <p id="usedOnceCount">1回だけ使われた文字数: 0</p>
+
+  <table class="kana-table" id="kanaTable">
+    <thead>
+      <tr><th></th></tr> <!-- 非表示の見出し -->
+    </thead>
+    <tbody>
+      <!-- JavaScriptで動的生成 -->
+    </tbody>
+  </table>
+  
+  <input type="text" id="inputText" placeholder="ひらがなを入力してください">
+
+  <script>
+    const consonantOrder = [
+      ["ん", ["ん", "", "", "", ""]],
+      ["わ", ["わ", "", "", "", "を"]],
+      ["ら", ["ら", "り", "る", "れ", "ろ"]],
+      ["や", ["や", "", "ゆ", "", "よ"]],
+      ["ま", ["ま", "み", "む", "め", "も"]],
+      ["ぱ", ["ぱ", "ぴ", "ぷ", "ぺ", "ぽ"]],
+      ["ば", ["ば", "び", "ぶ", "べ", "ぼ"]],
+      ["は", ["は", "ひ", "ふ", "へ", "ほ"]],
+      ["な", ["な", "に", "ぬ", "ね", "の"]],
+      ["だ", ["だ", "ぢ", "づ", "で", "ど"]],
+      ["た", ["た", "ち", "つ", "て", "と"]],
+      ["ざ", ["ざ", "じ", "ず", "ぜ", "ぞ"]],
+      ["さ", ["さ", "し", "す", "せ", "そ"]],
+      ["が", ["が", "ぎ", "ぐ", "げ", "ご"]],
+      ["か", ["か", "き", "く", "け", "こ"]],
+      ["あ", ["あ", "い", "う", "え", "お"]],
+    ];
+
+    const tableBody = document.getElementById("kanaTable").querySelector("tbody");
+
+    function createKanaTable() {
+      const vowels = ["あ", "い", "う", "え", "お"];
+
+      for (let i = 0; i < vowels.length; i++) {
+        const tr = document.createElement("tr");
+        for (let j = 0; j < consonantOrder.length; j++) {
+          const [rowLabel, kanaRow] = consonantOrder[j];
+          const td = document.createElement("td");
+          const kana = kanaRow[i] || "";
+          td.textContent = kana;
+          td.dataset.kana = kana;
+          tr.appendChild(td);
+        }
+        tableBody.appendChild(tr);
+      }
+    }
+
+    function highlightKana(text) {
+      const freq = {};
+      for (const ch of text) {
+        if (!/[\u3041-\u3096]/.test(ch)) continue; // ひらがなのみ
+        freq[ch] = (freq[ch] || 0) + 1;
+      }
+    
+      const allCells = document.querySelectorAll("#kanaTable td");
+      allCells.forEach(td => {
+        const kana = td.dataset.kana;
+        td.classList.remove("used-once", "used-multiple");
+        if (kana && freq[kana]) {
+          td.classList.add(freq[kana] === 1 ? "used-once" : "used-multiple");
+        }
+      });
+    
+      const usedOnceCount = Object.values(freq).filter(v => v === 1).length;
+      document.getElementById("usedOnceCount").textContent = `1回使われた文字数: ${usedOnceCount}`;
+    }
+    
+
+    document.getElementById("inputText").addEventListener("input", e => {
+      highlightKana(e.target.value);
+    });
+
+    createKanaTable();
+  </script>
+
+</body>
+</html>
