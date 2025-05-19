@@ -1,3 +1,3 @@
 # Kana Frequency Visualizer
-↓これです。
+これです。
 https://arad166.github.io/KanaFrequencyVisualizer/
