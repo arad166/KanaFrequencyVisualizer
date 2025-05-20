@@ -138,7 +138,7 @@
 
       // カウント表示
       const usedOnceCount = Object.values(freq).filter(v => v === 1).length;
-      document.getElementById("usedOnceCount").textContent = `1回使われた文字数: ${usedOnceCount}`;
+      document.getElementById("usedOnceCount").textContent = `1回だけ使われた文字数: ${usedOnceCount}`;
 
       // 編集内容を一時保存して、再描画（カーソル位置も復元）
       const selection = window.getSelection();
