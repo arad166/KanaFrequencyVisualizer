@@ -24,7 +24,7 @@
     }
 
     .kana-table th {
-      display: none; /* 行/列見出しを非表示 */
+      display: none;
     }
 
     .used-once {
@@ -37,11 +37,23 @@
       color: white;
     }
 
-    #inputText {
+    .kana-once {
+      color: blue;
+    }
+
+    .kana-multi {
+      color: red;
+    }
+
+    #editable {
       font-size: 20px;
       padding: 5px;
       width: 600px;
+      min-height: 30px;
+      border: 1px solid #ccc;
       margin-top: 20px;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
   </style>
 </head>
@@ -52,15 +64,11 @@
   <p id="usedOnceCount">1回だけ使われた文字数: 0</p>
 
   <table class="kana-table" id="kanaTable">
-    <thead>
-      <tr><th></th></tr> <!-- 非表示の見出し -->
-    </thead>
-    <tbody>
-      <!-- JavaScriptで動的生成 -->
-    </tbody>
+    <thead><tr><th></th></tr></thead>
+    <tbody></tbody>
   </table>
-  
-  <input type="text" id="inputText" placeholder="ひらがなを入力してください">
+
+  <div id="editable" contenteditable="true"></div>
 
   <script>
     const consonantOrder = [
@@ -82,48 +90,124 @@
       ["あ", ["あ", "い", "う", "え", "お"]],
     ];
 
-    const tableBody = document.getElementById("kanaTable").querySelector("tbody");
+    const editableDiv = document.getElementById("editable");
 
     function createKanaTable() {
       const vowels = ["あ", "い", "う", "え", "お"];
+      const tbody = document.querySelector("#kanaTable tbody");
 
       for (let i = 0; i < vowels.length; i++) {
         const tr = document.createElement("tr");
         for (let j = 0; j < consonantOrder.length; j++) {
-          const [rowLabel, kanaRow] = consonantOrder[j];
+          const kana = consonantOrder[j][1][i] || "";
           const td = document.createElement("td");
-          const kana = kanaRow[i] || "";
           td.textContent = kana;
           td.dataset.kana = kana;
           tr.appendChild(td);
         }
-        tableBody.appendChild(tr);
+        tbody.appendChild(tr);
       }
     }
 
-    function highlightKana(text) {
+    function getPlainTextFromEditable() {
+      const walker = document.createTreeWalker(editableDiv, NodeFilter.SHOW_TEXT);
+      let text = '';
+      while (walker.nextNode()) {
+        text += walker.currentNode.nodeValue;
+      }
+      return text;
+    }
+
+    function highlightText() {
+      const text = getPlainTextFromEditable();
+
       const freq = {};
       for (const ch of text) {
-        if (!/[\u3041-\u3096]/.test(ch)) continue; // ひらがなのみ
+        if (!/[\u3041-\u3096]/.test(ch)) continue;
         freq[ch] = (freq[ch] || 0) + 1;
       }
-    
-      const allCells = document.querySelectorAll("#kanaTable td");
-      allCells.forEach(td => {
+
+      // 表の色付け
+      document.querySelectorAll("#kanaTable td").forEach(td => {
         const kana = td.dataset.kana;
         td.classList.remove("used-once", "used-multiple");
         if (kana && freq[kana]) {
           td.classList.add(freq[kana] === 1 ? "used-once" : "used-multiple");
         }
       });
-    
+
+      // カウント表示
       const usedOnceCount = Object.values(freq).filter(v => v === 1).length;
       document.getElementById("usedOnceCount").textContent = `1回使われた文字数: ${usedOnceCount}`;
-    }
-    
 
-    document.getElementById("inputText").addEventListener("input", e => {
-      highlightKana(e.target.value);
+      // 編集内容を一時保存して、再描画（カーソル位置も復元）
+      const selection = window.getSelection();
+      const range = selection.getRangeAt(0);
+      const preCaretRange = range.cloneRange();
+      preCaretRange.selectNodeContents(editableDiv);
+      preCaretRange.setEnd(range.endContainer, range.endOffset);
+      const caretOffset = preCaretRange.toString().length;
+
+      let newHTML = "";
+      for (const ch of text) {
+        if (!/[\u3041-\u3096]/.test(ch)) {
+          newHTML += ch;
+        } else if (freq[ch] === 1) {
+          newHTML += `<span class="kana-once">${ch}</span>`;
+        } else {
+          newHTML += `<span class="kana-multi">${ch}</span>`;
+        }
+      }
+
+      editableDiv.innerHTML = newHTML;
+
+      // カーソル復元
+      setCursorPosition(editableDiv, caretOffset);
+    }
+
+    function setCursorPosition(container, offset) {
+      const range = document.createRange();
+      const sel = window.getSelection();
+      let currentOffset = 0;
+
+      function recurse(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const nextOffset = currentOffset + node.length;
+          if (currentOffset <= offset && offset <= nextOffset) {
+            range.setStart(node, offset - currentOffset);
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            throw 'found';
+          }
+          currentOffset = nextOffset;
+        } else {
+          for (let i = 0; i < node.childNodes.length; i++) {
+            recurse(node.childNodes[i]);
+          }
+        }
+      }
+
+      try {
+        recurse(container);
+      } catch (e) {
+        if (e !== 'found') throw e;
+      }
+    }
+
+    let isComposing = false;
+
+    editableDiv.addEventListener("input", () => {
+      if (!isComposing) highlightText();
+    });
+
+    editableDiv.addEventListener("compositionstart", () => {
+      isComposing = true;
+    });
+
+    editableDiv.addEventListener("compositionend", () => {
+      isComposing = false;
+      highlightText();
     });
 
     createKanaTable();
